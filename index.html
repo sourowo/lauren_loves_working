@@ -57,6 +57,8 @@ header.top h1{font-weight:400;font-size:clamp(1.7rem,4.5vw,2.3rem);line-height:1
 .tag svg{width:12px;height:12px;flex:none}
 .tag.boss{background:var(--seal);color:var(--onseal);box-shadow:0 2px 0 var(--sealdk)}
 .tag.routine{color:var(--blue);background:var(--bluebg);box-shadow:inset 0 0 0 1px var(--blue)}
+.tag.other{color:var(--ok);background:var(--okbg);box-shadow:inset 0 0 0 1px var(--ok)}
+.tag.track{color:var(--seal);background:var(--sealbg);border-radius:999px;padding-left:8px}
 .tag.fixed{color:var(--gold);background:var(--goldbg);box-shadow:inset 0 0 0 1px var(--gold);border-radius:999px;padding-left:8px}
 .tag.auto{color:var(--muted);background:var(--soft);border-radius:999px;padding-left:8px}
 
@@ -114,9 +116,14 @@ ul.tasks li.done .title{color:var(--muted);text-decoration:line-through}
 .editor.note textarea{background:var(--notebg);color:var(--ink)}
 .empty{background:var(--card);border:1px dashed var(--line);border-radius:var(--r-lg);padding:16px;color:var(--muted);text-align:center}
 
-.quickadd{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px}
+.quickadd{display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;gap:8px;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px}
 .quickadd input[type=text],.quickadd input[type=time],.quickadd select{border-radius:999px}
-@media (max-width:560px){.quickadd{grid-template-columns:auto 1fr auto}.quickadd input[type=text]{grid-column:1 / -1}}
+.quickadd .trk{font-size:.88rem;color:var(--muted);display:inline-flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer}
+@media (max-width:560px){.quickadd{grid-template-columns:auto 1fr}.quickadd input[type=text]{grid-column:1 / -1}}
+@media (max-width:380px){.quickadd .trange{grid-column:1 / -1}}
+.carry{color:var(--seal)}
+.donebox{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--soft);border-radius:var(--r-md);padding:8px 12px;font-size:.9rem;color:var(--muted)}
+.donebox input[type=date]{width:auto!important}
 
 /* 進度範圍、搜尋 */
 .progress .scope{display:flex;gap:4px}
@@ -132,6 +139,9 @@ ul.tasks li.done .title{color:var(--muted);text-decoration:line-through}
 .sresults .snone{padding:10px 16px;color:var(--muted);font-size:.9rem}
 /* 時間提醒 */
 .ttime.late{color:var(--seal);background:var(--sealbg)}
+.ttime.now{color:var(--ok);background:var(--okbg)}
+.trange{display:inline-flex;align-items:center;gap:4px;color:var(--muted);white-space:nowrap}
+.quickadd .trange input[type=time]{width:auto}
 .nextup{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bluebg);color:var(--blue);border-radius:var(--r-md);padding:10px 16px;margin:12px 0;font-size:.95rem}
 .nextup b{font-weight:400;font-size:1.15rem;font-variant-numeric:tabular-nums}
 .nextup .t{color:var(--ink)}
@@ -195,7 +205,7 @@ details.add summary{cursor:pointer}
 
 /* 例行總表 */
 .rtable{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:4px 0}
-.rrow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 100px 180px 180px;gap:10px;align-items:center;padding:10px 16px;border-top:1px dashed var(--line);font-size:.93rem}
+.rrow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 150px 180px 180px;gap:10px;align-items:center;padding:10px 16px;border-top:1px dashed var(--line);font-size:.93rem}
 .rrow:first-child{border-top:0}
 .rrow.head{font-size:.8rem;color:var(--muted);padding-top:6px;padding-bottom:6px}
 .rrow .fq{color:var(--muted)}
@@ -271,8 +281,9 @@ details.add summary{cursor:pointer}
   </div>
   <div class="quickadd">
     <input type="text" id="qaTitle" placeholder="新增這天的事項，例如：寄出原廠送修品">
-    <input type="time" id="qaTime" aria-label="時間（可留空）">
-    <select id="qaType" aria-label="類型"><option value="boss">主管交代</option><option value="routine">例行</option></select>
+    <span class="trange"><input type="time" id="qaTime" aria-label="預計開始時間（可留空）" title="預計開始">–<input type="time" id="qaEnd" aria-label="預計結束時間（可留空）" title="預計結束"></span>
+    <select id="qaType" aria-label="類型"><option value="boss">主管交代</option><option value="routine">例行</option><option value="other">其他</option></select>
+    <label class="trk"><input type="checkbox" id="qaTrack"> 需持續追蹤</label>
     <button class="btn primary" data-action="quick-add">新增</button>
   </div>
   <div id="todayBody"></div>
@@ -280,12 +291,14 @@ details.add summary{cursor:pointer}
 
 <section class="view narrow" id="view-timeline" hidden>
   <h2>時程表</h2>
-  <p class="hint">一次顯示一週，用 ◀ ▶ 切換週次，同一天依時間排序。每個事項按「編輯」都可以設定幾點幾分。勾選會同步到今日事項；例行項目勾選後，例行總表的完成時間也會一起更新。</p>
+  <p class="hint">一次顯示一週，用 ◀ ▶ 切換週次，同一天依時間排序。每個事項按「編輯」都可以設定預計開始和結束時間。勾選會同步到今日事項；例行項目勾選後，例行總表的完成時間也會一起更新。</p>
   <div class="tlbar" id="tlBar"></div>
   <div class="filters" role="group" aria-label="篩選">
     <button class="chip" data-filter="all" aria-pressed="true">全部</button>
     <button class="chip" data-filter="boss" aria-pressed="false">只看主管交代</button>
     <button class="chip" data-filter="routine" aria-pressed="false">只看例行</button>
+    <button class="chip" data-filter="other" aria-pressed="false">只看其他</button>
+    <button class="chip" data-filter="track" aria-pressed="false">只看持續追蹤</button>
     <button class="chip" data-filter="open" aria-pressed="false">只看未完成</button>
   </div>
   <div class="week" id="week"></div>
@@ -294,9 +307,12 @@ details.add summary{cursor:pointer}
     <div class="form">
       <div class="row">
         <label>日期 <input type="date" id="addDate"></label>
-        <label>時間 <input type="time" id="addTime"></label>
+        <label>預計開始 <input type="time" id="addTime"></label>
+        <label>預計結束 <input type="time" id="addEnd"></label>
         <label><input type="radio" name="addType" value="boss" checked> 主管交代</label>
         <label><input type="radio" name="addType" value="routine"> 例行</label>
+        <label><input type="radio" name="addType" value="other"> 其他</label>
+        <label><input type="checkbox" id="addTrack"> 需持續追蹤</label>
       </div>
       <input type="text" id="addTitle" placeholder="事項">
       <input type="text" id="addNote" placeholder="備註（可留空）">
@@ -307,7 +323,7 @@ details.add summary{cursor:pointer}
 
 <section class="view" id="view-routine" hidden>
   <h2>例行總表</h2>
-  <p class="hint">按「完成」會把完成時間設為今天，並依頻率推算下次時間。新增的例行事項會自動排進時程表和今日事項。</p>
+  <p class="hint">按「完成」可以選擇實際完成的日期（預設今天），並依頻率推算下次時間；「上次完成」也可以直接點日期修改。新增的例行事項會自動排進時程表和今日事項。</p>
   <details class="add" id="rAddBox" open>
     <summary>新增例行事項</summary>
     <div class="form">
@@ -502,12 +518,17 @@ const ICON_FLAG = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5v1
 const ICON_LOOP = `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6.5A5 5 0 0 0 4 4.2L2.5 5.8"/><path d="M2.5 2.5v3.3h3.3"/><path d="M3 9.5a5 5 0 0 0 9 2.3l1.5-1.6"/><path d="M13.5 13.5v-3.3h-3.3"/></svg>`;
 const TAG_BOSS = `<span class="tag boss">${ICON_FLAG}主管交代</span>`;
 const TAG_ROUTINE = `<span class="tag routine">${ICON_LOOP}例行</span>`;
-document.getElementById("legend").innerHTML = `<span>${TAG_BOSS}&nbsp; 這次特別交辦</span><span>${TAG_ROUTINE}&nbsp; 平常工作清單內</span><span class="sync" id="sync">儲存於此瀏覽器</span>`;
+const ICON_DOT = `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.5" fill="currentColor"/></svg>`;
+const TAG_OTHER = `<span class="tag other">${ICON_DOT}其他</span>`;
+const TAG_TRACK = `<span class="tag track">持續追蹤</span>`;
+const typeTag = t => t==="boss"?TAG_BOSS:t==="other"?TAG_OTHER:TAG_ROUTINE;
+const typeName = t => t==="boss"?"主管交代":t==="other"?"其他":"例行";
+document.getElementById("legend").innerHTML = `<span>${TAG_BOSS}&nbsp; 這次特別交辦</span><span>${TAG_ROUTINE}&nbsp; 平常工作清單內</span><span>${TAG_OTHER}&nbsp; 其他事項</span><span>${TAG_TRACK}&nbsp; 沒完成會延續到下一個工作天</span><span class="sync" id="sync">儲存於此瀏覽器</span>`;
 
 /* ---------- 狀態與同步 ---------- */
 const LS_KEY = "boss-away-todo-v1";
 function normalize(o){ o=o||{}; const obj=v=>v&&typeof v==="object"&&!Array.isArray(v)?v:{}; const arr=v=>Array.isArray(v)?v:[];
-  return {checks:obj(o.checks), ov:obj(o.ov), logs:arr(o.logs), custom:arr(o.custom), notes:obj(o.notes), edits:obj(o.edits), hidden:obj(o.hidden), routines:arr(o.routines), redits:obj(o.redits), rhidden:obj(o.rhidden), holidays:obj(o.holidays), hdel:obj(o.hdel)}; }
+  return {checks:obj(o.checks), ov:obj(o.ov), logs:arr(o.logs), custom:arr(o.custom), notes:obj(o.notes), edits:obj(o.edits), hidden:obj(o.hidden), routines:arr(o.routines), redits:obj(o.redits), rhidden:obj(o.rhidden), holidays:obj(o.holidays), hdel:obj(o.hdel), track:obj(o.track)}; }
 let state = normalize({});
 try{ const raw=localStorage.getItem(LS_KEY); if(raw) state=normalize(JSON.parse(raw)); }catch(e){}
 
@@ -595,14 +616,22 @@ function allTasks(){
   return _tasks = list.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:byTime(a,b));
 }
 function invalidate(){ _tasks=null; _rmap=null; }
-const byTime = (a,b) => (a.time||"99:99").localeCompare(b.time||"99:99");
+const byTime = (a,b) => (a.time||a.end||"99:99").localeCompare(b.time||b.end||"99:99");
 const tKey = t => "t:"+t.id;
 const dKey = (date,rid) => "d:"+date+":"+rid;
 const isDone = k => !!state.checks[k];
+const isTrack = t => !!state.track[t.id];
+const doneOn = k => { const c=state.checks[k]; if(!c) return ""; return c.on || (c.at?fmt(new Date(c.at)):""); };
+/* 持續追蹤：原排定日之後、在 date 這個工作天仍未完成（或就在這天完成）的事項 */
+function carriedFor(date){
+  if(!isWorkday(date)) return [];
+  return allTasks().filter(t=>isTrack(t) && t.date<date && (!isDone(tKey(t)) || doneOn(tKey(t))>=date));
+}
+function workdaysBetween(a,b){ let n=0; for(let d=a; d<=b; d=addDays(d,1)) if(isWorkday(d)) n++; return n; }
 const dailyList = () => getRoutines().filter(r=>r.rule==="daily").sort(byTime);
 function noteFor(t){ return state.notes[tKey(t)] ?? (t.custom ? (t.note||"") : ""); }
 
-function toggleTask(t){
+function toggleTask(t,on){
   const k=tKey(t), R=rmap();
   if(state.checks[k]){
     const c=state.checks[k];
@@ -610,7 +639,7 @@ function toggleTask(t){
     state.logs = state.logs.filter(l=>l.ref!==k);
     delete state.checks[k];
   }else{
-    const rec={at:new Date().toISOString()};
+    const rec={at:new Date().toISOString(), on:on||TODAY};
     if(t.routine && R[t.routine]){
       rec.prev = state.ov[t.routine] ? {...state.ov[t.routine]} : null;
       state.ov[t.routine] = {last:t.date, next:computeNext(R[t.routine].rule,t.date)};
@@ -657,10 +686,12 @@ function editorHtml(){
   if(ed.kind==="task") return `<div class="editor">
       <label>事項 ${edField("title",d.title)}</label>
       <div class="row"><label>日期 <input type="date" data-ed="date" value="${d.date}"></label>
-      <label>時間 <input type="time" data-ed="time" value="${esc(d.time)}"></label>
-      <label>類型 <select data-ed="type"><option value="boss" ${d.type==="boss"?"selected":""}>主管交代</option><option value="routine" ${d.type==="routine"?"selected":""}>例行</option></select></label></div>
+      <label>預計開始 <input type="time" data-ed="time" value="${esc(d.time)}"></label>
+      <label>預計結束 <input type="time" data-ed="end" value="${esc(d.end)}"></label>
+      <label>類型 <select data-ed="type"><option value="boss" ${d.type==="boss"?"selected":""}>主管交代</option><option value="routine" ${d.type==="routine"?"selected":""}>例行</option><option value="other" ${d.type==="other"?"selected":""}>其他</option></select></label>
+      <label><input type="checkbox" data-ed-track ${d.track?"checked":""}> 需持續追蹤</label></div>
       ${d.custom?"":`<label>說明 ${edField("note",d.note,'placeholder="電話、地點等補充（可留空）"')}</label>`}
-      <div class="row"><button class="btn small primary" data-action="ed-save">儲存</button><button class="btn small" data-action="ed-cancel">取消</button><button class="btn small danger" data-action="ed-delete">刪除此事項</button></div></div>`;
+      <div class="row"><button class="btn small primary" data-action="ed-save">儲存</button><button class="btn small" data-action="ed-cancel">取消</button><button class="btn small danger" data-action="ed-delete">刪除此事項</button><span class="hint" data-ed-msg></span></div></div>`;
   if(ed.kind==="routine") return `<div class="editor">
       <label>名稱 ${edField("name",d.name)}</label>
       <div class="row"><label>頻率 ${ruleSelect(d.rule)}</label>
@@ -676,7 +707,7 @@ function editorHtml(){
   return "";
 }
 function openEditor(kind,id){
-  if(kind==="task"){ const t=allTasks().find(x=>x.id===id); if(!t) return; ed={kind,id,d:{title:t.title,date:t.date,time:t.time||"",type:t.type,custom:!!t.custom,note:t.custom?"":(t.note||"")}}; }
+  if(kind==="task"){ const t=allTasks().find(x=>x.id===id); if(!t) return; ed={kind,id,d:{title:t.title,date:t.date,time:t.time||"",end:t.end||"",type:t.type,custom:!!t.custom,note:t.custom?"":(t.note||""),track:isTrack(t)}}; }
   else if(kind==="routine"){ const r=rmap()[id]; if(!r) return; const e=routineEff(r); ed={kind,id,d:{name:r.name,rule:r.rule,time:r.time||"",custom:!!r.custom,date:r.custom?(r.start||""):e.next}}; }
   else if(kind==="log"){ const l=state.logs.find(x=>x.id===id); if(!l) return; ed={kind,id,d:{roc:roc(l.date),time:l.time||"",kind:l.kind,text:l.text}}; }
   else if(kind==="note"){ const t=id.startsWith("t:")?allTasks().find(x=>tKey(x)===id):null; const v=t?noteFor(t):(state.notes[id]||""); ed={kind,id,d:{text:v,orig:v}}; }
@@ -688,9 +719,11 @@ function saveEditor(){
   if(ed.kind==="note"){ state.notes[id]=d.text.trim(); }
   else if(ed.kind==="task"){
     if(!d.title.trim()||!d.date) return;
+    if(d.time && d.end && d.end<d.time){ const m=document.querySelector("[data-ed-msg]"); if(m) m.textContent="結束時間不能早於開始時間"; return; }
     const c=state.custom.find(x=>x.id===id);
-    if(c){ Object.assign(c,{title:d.title.trim(),date:d.date,time:d.time||"",type:d.type,note:""}); }
-    else state.edits[id]={title:d.title.trim(),date:d.date,time:d.time||"",type:d.type,note:d.note.trim()};
+    if(c){ Object.assign(c,{title:d.title.trim(),date:d.date,time:d.time||"",end:d.end||"",type:d.type,note:""}); }
+    else state.edits[id]={title:d.title.trim(),date:d.date,time:d.time||"",end:d.end||"",type:d.type,note:d.note.trim()};
+    if(d.track) state.track[id]=true; else delete state.track[id];
   }
   else if(ed.kind==="routine"){
     if(!d.name.trim()) return;
@@ -717,7 +750,7 @@ function deleteFromEditor(){
     if(!confirm(`刪除「${t.title}」？`)) return;
     if(state.custom.some(c=>c.id===id)) state.custom=state.custom.filter(c=>c.id!==id);
     else state.hidden[id]=true;
-    delete state.checks["t:"+id]; delete state.notes["t:"+id]; delete state.edits[id];
+    delete state.checks["t:"+id]; delete state.notes["t:"+id]; delete state.edits[id]; delete state.track[id];
     state.logs=state.logs.filter(l=>l.ref!=="t:"+id);
   }else if(ed.kind==="routine"){
     const r=rmap()[id]; if(!r) return;
@@ -735,17 +768,27 @@ function noteBlock(key,text){
 }
 
 /* ---------- 任務呈現 ---------- */
-const isLate = (tm,date,done) => !!tm && !done && date===TODAY && tm<nowTime();
-const timeTag = (tm,date,done) => !tm ? "" : isLate(tm,date,done) ? `<span class="ttime late" title="已過預定時間">${esc(tm)} 已過</span>` : `<span class="ttime">${esc(tm)}</span>`;
+/* 有結束時間時，超過結束時間才算逾時；只有開始時間時，過了開始時間就算 */
+const isLate = (tm,date,done,end) => !done && date===TODAY && (end ? end<nowTime() : (!!tm && tm<nowTime()));
+const isNow = (tm,date,done,end) => !done && date===TODAY && !!tm && !!end && tm<=nowTime() && nowTime()<=end;
+const timeTag = (tm,date,done,end) => {
+  if(!tm && !end) return "";
+  const txt = tm&&end ? `${esc(tm)}–${esc(end)}` : tm ? esc(tm) : `${esc(end)} 前`;
+  if(isLate(tm,date,done,end)) return `<span class="ttime late" title="${end?"已超過預計結束時間":"已過預定時間"}">${txt} ${end?"已逾時":"已過"}</span>`;
+  if(isNow(tm,date,done,end)) return `<span class="ttime now" title="現在在預計時段內">${txt} 進行中</span>`;
+  return `<span class="ttime">${txt}</span>`;
+};
 function tagsFor(t,short){
-  let s = t.type==="boss" ? TAG_BOSS : TAG_ROUTINE;
-  if(t.fixed && t.type!=="boss") s+=` <span class="tag fixed">${short?"指定日期":"主管指定日期"}</span>`;
+  let s = typeTag(t.type);
+  if(isTrack(t)) s+=` ${TAG_TRACK}`;
+  if(t.fixed && t.type==="routine") s+=` <span class="tag fixed">${short?"指定日期":"主管指定日期"}</span>`;
   if(t.gen) s+=` <span class="tag auto">自動排入</span>`;
   return s;
 }
 function metaHtml(t,opts={}){
   let meta="";
-  if(opts.showDate) meta+=`<span class="from">原排定 ${label(t.date)}</span>　`;
+  if(opts.carry){ const k=tKey(t); meta+= isDone(k) ? `<span class="carry">原排定 ${label(t.date)}，已於 ${label(doneOn(k))} 完成</span>　` : `<span class="carry">原排定 ${label(t.date)}，持續追蹤第 ${workdaysBetween(t.date,opts.carry)} 個工作天</span>　`; }
+  else if(opts.showDate) meta+=`<span class="from">原排定 ${label(t.date)}</span>　`;
   if(t.phone) meta+=`電話 <a href="tel:${t.phone.replace(/-/g,"")}">${esc(t.phone)}</a>　`;
   if(t.note && !t.custom) meta+=esc(t.note);
   if(t.steps) meta+=`<div class="steps"><em>ibon 路徑</em>${t.steps.map(s=>`<span>${esc(s)}</span>`).join("<em>›</em>")}</div>`;
@@ -756,18 +799,19 @@ function taskLi(t,opts={}){
   if(edOpen("task",t.id)) return `<li>${editorHtml()}</li>`;
   return `<li class="${done?"done":""}">
     <input type="checkbox" class="check" data-action="toggle-task" data-id="${t.id}" ${done?"checked":""} aria-label="${esc(t.title)}">
-    <div class="tline">${timeTag(t.time,t.date,done)}<span class="title">${esc(t.title)}</span>${tagsFor(t)}<span class="acts">${noteBtn(k,!!n)}${editBtn("task",t.id)}</span></div>
+    <div class="tline">${timeTag(t.time,t.date,done,t.end)}<span class="title">${esc(t.title)}</span>${tagsFor(t)}<span class="acts">${trackBtn(t)}${noteBtn(k,!!n)}${editBtn("task",t.id)}</span></div>
     ${metaHtml(t,opts)}${noteBlock(k,n)}
   </li>`;
 }
-function calTask(t){
+function trackBtn(t){ return `<button class="link" data-action="track-toggle" data-id="${esc(t.id)}">${isTrack(t)?"取消追蹤":"設為追蹤"}</button>`; }
+function calTask(t,opts={}){
   const k=tKey(t), done=isDone(k), n=noteFor(t);
   if(edOpen("task",t.id)) return `<div class="ctask">${editorHtml()}</div>`;
   return `<div class="ctask ${done?"done":""}">
     <input type="checkbox" class="check" data-action="toggle-task" data-id="${t.id}" ${done?"checked":""} aria-label="${esc(t.title)}">
-    <div class="ctop">${timeTag(t.time,t.date,done)}<span class="title">${esc(t.title)}</span>${tagsFor(t,true)}</div>
-    ${metaHtml(t)}${noteBlock(k,n)}
-    <div class="acts">${noteBtn(k,!!n)}${editBtn("task",t.id)}</div>
+    <div class="ctop">${timeTag(t.time,t.date,done,t.end)}<span class="title">${esc(t.title)}</span>${tagsFor(t,true)}</div>
+    ${metaHtml(t,opts)}${noteBlock(k,n)}
+    <div class="acts">${trackBtn(t)}${noteBtn(k,!!n)}${editBtn("task",t.id)}</div>
   </div>`;
 }
 
@@ -785,10 +829,10 @@ function renderToday(){
   const daily=isWorkday(viewDate)?dailyList():[];
   if(viewDate===TODAY){
     const now=nowTime();
-    const upcoming=tasks.filter(t=>t.time&&t.time>=now&&!isDone(tKey(t))).map(t=>({time:t.time,title:t.title}))
+    const upcoming=tasks.filter(t=>t.time&&t.time>=now&&!isDone(tKey(t))).map(t=>({time:t.time,title:t.title+(t.end?`（到 ${t.end}）`:"")}))
       .concat(daily.filter(r=>r.time&&r.time>=now&&!isDone(dKey(TODAY,r.id))).map(r=>({time:r.time,title:r.name})))
       .sort(byTime);
-    const late=tasks.filter(t=>isLate(t.time,t.date,isDone(tKey(t)))).length + daily.filter(r=>isLate(r.time,TODAY,isDone(dKey(TODAY,r.id)))).length;
+    const late=tasks.filter(t=>isLate(t.time,t.date,isDone(tKey(t)),t.end)).length + daily.filter(r=>isLate(r.time,TODAY,isDone(dKey(TODAY,r.id)))).length;
     if(upcoming.length){
       const n=upcoming[0], [h,m]=n.time.split(":").map(Number), [nh,nm]=now.split(":").map(Number), mins=h*60+m-(nh*60+nm);
       body.push(`<div class="nextup"><span>下一件</span><b>${esc(n.time)}</b><span class="t">${esc(n.title)}</span><span>${mins<=0?"就是現在":mins<60?`還有 ${mins} 分鐘`:`還有 ${Math.floor(mins/60)} 小時 ${mins%60} 分`}</span></div>`);
@@ -797,6 +841,13 @@ function renderToday(){
   }
   body.push(`<h3>這天的排程 <small>${tasks.length?`${tasks.filter(t=>isDone(tKey(t))).length} / ${tasks.length} 完成`:""}</small></h3>`);
   body.push(tasks.length?`<ul class="tasks">${tasks.map(t=>taskLi(t)).join("")}</ul>`:`<div class="empty">這天沒有特別排程，可以用上方欄位新增。</div>`);
+
+  const carried=carriedFor(viewDate);
+  if(carried.length){
+    const open=carried.filter(t=>!isDone(tKey(t))).length;
+    body.push(`<h3>持續追蹤 <small>${open?`${open} 項延續中，完成後打勾`:"已全部完成"}</small></h3>`);
+    body.push(`<ul class="tasks">${carried.map(t=>taskLi(t,{carry:viewDate})).join("")}</ul>`);
+  }
 
   if(daily.length){
     body.push(`<h3>每日例行 <small>${daily.filter(r=>isDone(dKey(viewDate,r.id))).length} / ${daily.length} 完成</small></h3>`);
@@ -810,7 +861,7 @@ function renderToday(){
     body.push(`<h3>待和JS確認 <small>${jsOpen.length} 項，確認後打勾</small></h3>`);
     body.push(`<ul class="tasks">${jsOpen.map(l=>`<li><input type="checkbox" class="check" data-action="js-toggle" data-id="${l.id}" aria-label="已確認：${esc(l.text)}"><div class="tline"><span class="title">${esc(l.text)}</span><span class="hint">${md(l.date)} 記錄</span></div></li>`).join("")}</ul>`);
   }
-  const overdue=allTasks().filter(t=>t.date<viewDate && !isDone(tKey(t)));
+  const overdue=allTasks().filter(t=>t.date<viewDate && !isDone(tKey(t)) && !(isTrack(t) && isWorkday(viewDate)));
   if(overdue.length){
     body.push(`<h3>先前未完成 <small>${overdue.length} 項</small></h3>`);
     body.push(`<ul class="tasks">${overdue.map(t=>taskLi(t,{showDate:true})).join("")}</ul>`);
@@ -835,11 +886,15 @@ function renderTimeline(){
   for(let i=0;i<7;i++){
     const d=addDays(weekStart,i), wk=i>=5, hol=holName(d);
     let list=tasks.filter(t=>t.date===d);
+    const carry=d===TODAY?carriedFor(d).filter(t=>!isDone(tKey(t))):[];
+    list=list.concat(carry);
     const hadAny=list.length>0;
     if(tFilter==="boss") list=list.filter(t=>t.type==="boss");
     if(tFilter==="routine") list=list.filter(t=>t.type==="routine");
+    if(tFilter==="other") list=list.filter(t=>t.type==="other");
+    if(tFilter==="track") list=list.filter(t=>isTrack(t));
     if(tFilter==="open") list=list.filter(t=>!isDone(tKey(t)));
-    let inner=list.map(calTask).join("");
+    let inner=list.map(t=>calTask(t, t.date<d?{carry:d}:{})).join("");
     if(!list.length){
       if(hol) inner=`<div class="cquiet">放假</div>`;
       else if(!wk) inner=`<div class="cquiet">${hadAny?"此篩選下沒有事項":"只有每日例行"}</div>`;
@@ -856,6 +911,7 @@ function renderTimeline(){
 function jumpTo(d){ weekStart=monday(d); renderTimeline(); }
 
 /* ---------- 例行總表 ---------- */
+let doneFor=null;
 function renderRoutine(){
   const rs=getRoutines();
   const order=["每日","每週","定期（月／季／半年）","每年","新人相關","不定期"];
@@ -874,9 +930,9 @@ function renderRoutine(){
         const e=routineEff(r);
         return `<div class="rrow"><span class="nm">${esc(r.name)}${badge}</span>
           <span class="fq"><span class="lbl">頻率</span>${esc(r.freq)} ${timeTag(r.time)}</span>
-          <span class="ld"><span class="lbl">上次完成</span>${e.last?roc(e.last):"—"}</span>
+          <span class="ld"><span class="lbl">上次完成</span><input type="date" value="${e.last}" data-action="set-last" data-id="${r.id}" aria-label="${esc(r.name)} 上次完成日期"></span>
           <span class="nx"><span class="lbl">下次時間</span><input type="date" value="${e.next}" data-action="set-next" data-id="${r.id}" aria-label="${esc(r.name)} 下次時間">${routineFlag(r,e)}</span>
-          <span class="act">${noteBtn(k,!!n)}${editBtn("routine",r.id)}<button class="btn small" data-action="routine-done" data-id="${r.id}">完成</button></span>${noteBlock(k,n)}</div>`;
+          <span class="act">${noteBtn(k,!!n)}${editBtn("routine",r.id)}<button class="btn small" data-action="routine-done" data-id="${r.id}">完成</button></span>${doneFor===r.id?`<div class="donebox">完成日期 <input type="date" id="doneDate" value="${TODAY}" aria-label="實際完成日期"><button class="btn small primary" data-action="routine-done-ok" data-id="${r.id}">確認完成</button><button class="btn small" data-action="routine-done-cancel">取消</button><span>下次時間會依這天重新推算</span></div>`:""}${noteBlock(k,n)}</div>`;
       }).join("")}
     </div>`;
   }).join("");
@@ -896,7 +952,7 @@ function renderLog(){
 }
 function buildSummary(from,to){
   const lines=[], inR=l=>l.date>=from&&l.date<=to;
-  const logs=[...state.logs].filter(l=>inR(l)).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
+  const logs=[...state.logs].filter(l=>!l.daily&&inR(l)).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
   for(const d of [...new Set(logs.map(l=>l.date))]){
     const day=logs.filter(l=>l.date===d), work=day.filter(l=>l.kind!=="js"), js=day.filter(l=>l.kind==="js");
     if(work.length){
@@ -913,6 +969,8 @@ function buildSummary(from,to){
       lines.push("");
     }
   }
+  const dailyDays=new Set(state.logs.filter(l=>l.daily&&inR(l)).map(l=>l.date));
+  if(dailyDays.size) lines.push(`每日例行有記錄的天數：${dailyDays.size} 天`,"");
   return lines.join("\n").trimEnd();
 }
 function setLogDate(iso){ const i=document.getElementById("logDate"); i.value=roc(iso); i.classList.remove("bad"); }
@@ -965,7 +1023,7 @@ function renderSearch(){
   const hit=t=>String(t||"").toLowerCase().includes(q);
   const hl=t=>{ const s=String(t||""), i=s.toLowerCase().indexOf(q); return i<0?esc(s):esc(s.slice(0,i))+"<mark>"+esc(s.slice(i,i+q.length))+"</mark>"+esc(s.slice(i+q.length)); };
   const res=[];
-  for(const t of allTasks()){ const n=noteFor(t); if(hit(t.title)||hit(t.note)||hit(n)) res.push({type:"task",d:t.date,tag:t.type==="boss"?"主管交代":"例行",text:hit(t.title)?t.title:`${t.title}｜${hit(n)?n:t.note}`}); }
+  for(const t of allTasks()){ const n=noteFor(t); if(hit(t.title)||hit(t.note)||hit(n)) res.push({type:"task",d:t.date,tag:typeName(t.type),text:hit(t.title)?t.title:`${t.title}｜${hit(n)?n:t.note}`}); }
   for(const l of state.logs){ if(hit(l.text)) res.push({type:"log",d:l.date,tag:"日誌・"+(KIND[l.kind]||"備註"),text:l.text}); }
   for(const r of getRoutines()){ const n=state.notes["r:"+r.id]; if(hit(r.name)||hit(n)) res.push({type:"routine",d:"",tag:"例行總表",text:hit(r.name)?r.name:`${r.name}｜${n}`}); }
   res.sort((a,b)=>(b.d||"").localeCompare(a.d||""));
@@ -989,9 +1047,10 @@ function showTab(name){
   try{ localStorage.setItem(LS_KEY+"-tab",name); }catch(e){}
   window.scrollTo({top:0});
 }
-function addCustom(date,title,type,note,time){
-  const c={id:"c"+uid(),date,title,type,time:time||""};
+function addCustom(date,title,type,note,time,track,end){
+  const c={id:"c"+uid(),date,title,type,time:time||"",end:end||""};
   state.custom.push(c);
+  if(track) state.track[c.id]=true;
   if(note) state.notes["t:"+c.id]=note;
   save();
 }
@@ -1005,7 +1064,8 @@ document.addEventListener("click",e=>{
   if(el.tagName==="INPUT" && el.type==="date") return;
   const a=el.dataset.action, id=el.dataset.id;
   switch(a){
-    case "toggle-task": { const t=allTasks().find(x=>x.id===id); if(t) toggleTask(t); break; }
+    case "toggle-task": { const t=allTasks().find(x=>x.id===id); if(t) toggleTask(t, el.closest("#view-today")&&viewDate<TODAY?viewDate:TODAY); break; }
+    case "track-toggle": { if(state.track[id]) delete state.track[id]; else state.track[id]=true; save(); break; }
     case "toggle-daily": toggleDaily(viewDate,id); break;
     case "day-prev": viewDate=addDays(viewDate,-1); renderToday(); break;
     case "day-next": viewDate=addDays(viewDate,1); renderToday(); break;
@@ -1022,16 +1082,22 @@ document.addEventListener("click",e=>{
     case "quick-add": {
       const inp=document.getElementById("qaTitle"), title=inp.value.trim();
       if(!title){ inp.focus(); return; }
-      const tm=document.getElementById("qaTime"); inp.value=""; const tv=tm.value; tm.value=""; addCustom(viewDate,title,document.getElementById("qaType").value,"",tv); break;
+      const tm=document.getElementById("qaTime"), te=document.getElementById("qaEnd"), tk=document.getElementById("qaTrack");
+      if(tm.value && te.value && te.value<tm.value){ te.classList.add("bad"); te.title="結束時間不能早於開始時間"; te.focus(); return; }
+      te.classList.remove("bad"); te.title="預計結束";
+      inp.value=""; const tv=tm.value, ev=te.value, trk=tk.checked; tm.value=""; te.value=""; tk.checked=false;
+      addCustom(viewDate,title,document.getElementById("qaType").value,"",tv,trk,ev); break;
     }
     case "add-task": {
       const date=document.getElementById("addDate").value, title=document.getElementById("addTitle").value.trim();
       const type=document.querySelector("input[name=addType]:checked").value, note=document.getElementById("addNote").value.trim();
       const msg=document.getElementById("addMsg");
       if(!date||!title){ msg.textContent="請填日期和事項。"; return; }
-      const time=document.getElementById("addTime").value;
-      document.getElementById("addTitle").value=""; document.getElementById("addNote").value=""; document.getElementById("addTime").value="";
-      addCustom(date,title,type,note,time); msg.textContent=`已加入 ${label(date)}。`; jumpTo(date); break;
+      const time=document.getElementById("addTime").value, end=document.getElementById("addEnd").value;
+      if(time && end && end<time){ msg.textContent="結束時間不能早於開始時間。"; return; }
+      document.getElementById("addTitle").value=""; document.getElementById("addNote").value=""; document.getElementById("addTime").value=""; document.getElementById("addEnd").value="";
+      const trk=document.getElementById("addTrack").checked; document.getElementById("addTrack").checked=false;
+      addCustom(date,title,type,note,time,trk,end); msg.textContent=`已加入 ${label(date)}。`; jumpTo(date); break;
     }
     case "routine-add": {
       const name=document.getElementById("raName").value.trim(), rule=document.getElementById("raRule").value, start=document.getElementById("raStart").value||TODAY;
@@ -1053,10 +1119,17 @@ document.addEventListener("click",e=>{
     case "ed-clear": ed.d.text=""; saveEditor(); break;
     case "ed-delete": deleteFromEditor(); break;
     case "routine-done": {
-      const r=rmap()[id];
-      state.ov[id]={last:TODAY,next:computeNext(r.rule,TODAY)};
-      state.logs.push({id:uid(),date:TODAY,time:nowTime(),kind:"done",text:`完成：${r.name}`,ref:"r:"+id,auto:true});
-      save(); break;
+      doneFor = doneFor===id ? null : id; renderRoutine();
+      if(doneFor){ const i=document.getElementById("doneDate"); if(i) i.focus(); }
+      break;
+    }
+    case "routine-done-cancel": doneFor=null; renderRoutine(); break;
+    case "routine-done-ok": {
+      const r=rmap()[id]; if(!r) return;
+      const d=(document.getElementById("doneDate")||{}).value || TODAY;
+      state.ov[id]={last:d,next:computeNext(r.rule,d)};
+      state.logs.push({id:uid(),date:d,time:d===TODAY?nowTime():"",kind:"done",text:`完成：${r.name}`,ref:"r:"+id,auto:true});
+      doneFor=null; save(); break;
     }
     case "logdate-prev": case "logdate-next": case "logdate-today": {
       const cur=parseRoc(document.getElementById("logDate").value)||TODAY;
@@ -1147,7 +1220,7 @@ document.addEventListener("click",e=>{
     }
   }
 });
-document.addEventListener("input",e=>{ if(e.target.id==="q"){ renderSearch(); return; } const f=e.target.dataset&&e.target.dataset.ed; if(f&&ed) ed.d[f]=e.target.value; });
+document.addEventListener("input",e=>{ if(e.target.id==="q"){ renderSearch(); return; } if(e.target.id==="qaEnd"||e.target.id==="qaTime") document.getElementById("qaEnd").classList.remove("bad"); const f=e.target.dataset&&e.target.dataset.ed; if(f&&ed) ed.d[f]=e.target.value; });
 document.addEventListener("keydown",e=>{
   if(e.isComposing) return;
   if(e.target.id==="qaTitle" && e.key==="Enter"){ e.preventDefault(); document.querySelector('[data-action="quick-add"]').click(); }
@@ -1158,9 +1231,14 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("change",e=>{
   const el=e.target;
   if(el.dataset.ed && ed){ ed.d[el.dataset.ed]=el.value; return; }
+  if(el.hasAttribute("data-ed-track") && ed){ ed.d.track=el.checked; return; }
   if(el.dataset.action==="set-next"){
     const id=el.dataset.id, cur=routineEff(rmap()[id]);
     state.ov[id]={last:cur.last, next:el.value}; save();
+  }else if(el.dataset.action==="set-last"){
+    const id=el.dataset.id, r=rmap()[id], cur=routineEff(r);
+    const next = el.value ? (computeNext(r.rule,el.value) || cur.next) : cur.next;
+    state.ov[id]={last:el.value, next}; save();
   }else if(el.id==="todayPick" && el.value){ viewDate=el.value; renderToday(); }
   else if(el.id==="logDate"){ const iso=parseRoc(el.value); if(iso){ setLogDate(iso); document.getElementById("logMsg").textContent=""; } else el.classList.add("bad"); }
   else if(el.id==="bkFile" && el.files && el.files[0]){ const f=el.files[0]; f.text().then(t=>{ document.getElementById("bkText").value=t; importBackup(t); el.value=""; }); }
