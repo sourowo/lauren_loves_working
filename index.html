@@ -112,8 +112,8 @@ ul.tasks li.done .title{color:var(--muted);text-decoration:line-through}
 .link:hover{background:var(--soft);color:var(--ink)}
 .grip{background:none;border:0;color:var(--muted);cursor:grab;padding:4px 6px;margin-left:2px;border-radius:6px;line-height:1;font-size:1rem;touch-action:none;user-select:none;-webkit-user-select:none;opacity:.55}
 .grip:hover,.grip:focus-visible{opacity:1;background:var(--soft)}
-ul.tasks li.dragging{position:relative;z-index:5;background:var(--card);box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:grabbing}
-ul.tasks li.dragging .grip{cursor:grabbing;opacity:1}
+.dragging{position:relative;z-index:5;background:var(--card);box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:grabbing;border-radius:var(--r-md)}
+.dragging .grip{cursor:grabbing;opacity:1}
 body.drag-on{cursor:grabbing;user-select:none;-webkit-user-select:none}
 .mynote{grid-column:2;background:var(--notebg);color:var(--noteink);border-radius:var(--r-sm);padding:6px 12px;font-size:.88rem;white-space:pre-wrap}
 .autolink{color:inherit;text-decoration:underline;text-underline-offset:2px;word-break:break-all}
@@ -823,11 +823,11 @@ function trackBtn(t){ return `<button class="link" data-action="track-toggle" da
 function calTask(t,opts={}){
   const k=tKey(t), done=isDone(k), n=noteFor(t);
   if(edOpen("task",t.id)) return `<div class="ctask">${editorHtml()}</div>`;
-  return `<div class="ctask ${done?"done":""}">
+  return `<div class="ctask ${done?"done":""}"${opts.move?` data-oid="${esc(t.id)}"`:""}>
     <input type="checkbox" class="check" data-action="toggle-task" data-id="${t.id}" ${done?"checked":""} aria-label="${esc(t.title)}">
     <div class="ctop">${timeTag(t.time,t.date,done,t.end)}<span class="title">${esc(t.title)}</span>${tagsFor(t,true)}</div>
     ${metaHtml(t,opts)}${noteBlock(k,n)}
-    <div class="acts">${trackBtn(t)}${noteBtn(k,!!n)}${editBtn("task",t.id)}</div>
+    <div class="acts">${trackBtn(t)}${noteBtn(k,!!n)}${editBtn("task",t.id)}${opts.move?dragHandle(opts.move,t.id):""}</div>
   </div>`;
 }
 
@@ -910,7 +910,7 @@ function renderTimeline(){
     if(tFilter==="other") list=list.filter(t=>t.type==="other");
     if(tFilter==="track") list=list.filter(t=>isTrack(t));
     if(tFilter==="open") list=list.filter(t=>!isDone(tKey(t)));
-    let inner=list.map(t=>calTask(t, t.date<d?{carry:d}:{})).join("");
+    let inner=list.map(t=>calTask(t, t.date<d?{carry:d}:{move:"day:"+d})).join("");
     if(!list.length){
       if(hol) inner=`<div class="cquiet">放假</div>`;
       else if(!wk) inner=`<div class="cquiet">${hadAny?"此篩選下沒有事項":"只有每日例行"}</div>`;
@@ -933,7 +933,7 @@ function renderRoutine(){
   const order=["每日","每週","定期（月／季／半年）","每年","新人相關","不定期"];
   const groups=[...new Set(rs.map(r=>r.g))].sort((a,b)=>order.indexOf(a)-order.indexOf(b));
   document.getElementById("routineBody").innerHTML=groups.map(g=>{
-    const rows=g==="每日"?rs.filter(r=>r.g===g).sort((a,b)=>byOrder("daily",a,b)):rs.filter(r=>r.g===g);
+    const rows=routineGroupRows(g), gl=g==="每日"?"daily":"rg:"+g;
     return `<h3>${esc(g)} <small>${rows.length} 項</small></h3><div class="rtable">
       <div class="rrow head"><span>事項</span><span>頻率</span><span>上次完成</span><span>下次時間</span><span></span></div>
       ${rows.map(r=>{
@@ -941,14 +941,14 @@ function renderRoutine(){
         if(edOpen("routine",r.id)) return `<div class="rrow">${editorHtml()}</div>`;
         if(r.rule==="daily"){
           const dn=isWorkday(TODAY)&&isDone(dKey(TODAY,r.id));
-          return `<div class="rrow"><span class="nm">${esc(r.name)}${badge}</span><span class="fq"><span class="lbl">頻率</span>${esc(r.freq)} ${timeTag(r.time)}</span><span class="ld"><span class="lbl">今天</span>${isWorkday(TODAY)?(dn?"已完成":"未完成"):"非工作日"}</span><span class="nx"><span class="hint">在今日事項勾選</span></span><span class="act">${noteBtn(k,!!n)}${editBtn("routine",r.id)}</span>${noteBlock(k,n)}</div>`;
+          return `<div class="rrow" data-oid="${esc(r.id)}"><span class="nm">${esc(r.name)}${badge}</span><span class="fq"><span class="lbl">頻率</span>${esc(r.freq)} ${timeTag(r.time)}</span><span class="ld"><span class="lbl">今天</span>${isWorkday(TODAY)?(dn?"已完成":"未完成"):"非工作日"}</span><span class="nx"><span class="hint">在今日事項勾選</span></span><span class="act">${noteBtn(k,!!n)}${editBtn("routine",r.id)}${dragHandle(gl,r.id)}</span>${noteBlock(k,n)}</div>`;
         }
         const e=routineEff(r);
-        return `<div class="rrow"><span class="nm">${esc(r.name)}${badge}</span>
+        return `<div class="rrow" data-oid="${esc(r.id)}"><span class="nm">${esc(r.name)}${badge}</span>
           <span class="fq"><span class="lbl">頻率</span>${esc(r.freq)} ${timeTag(r.time)}</span>
           <span class="ld"><span class="lbl">上次完成</span><input type="date" value="${e.last}" data-action="set-last" data-id="${r.id}" aria-label="${esc(r.name)} 上次完成日期"></span>
           <span class="nx"><span class="lbl">下次時間</span><input type="date" value="${e.next}" data-action="set-next" data-id="${r.id}" aria-label="${esc(r.name)} 下次時間">${routineFlag(r,e)}</span>
-          <span class="act">${noteBtn(k,!!n)}${editBtn("routine",r.id)}<button class="btn small" data-action="routine-done" data-id="${r.id}">完成</button></span>${doneFor===r.id?`<div class="donebox">完成日期 <input type="date" id="doneDate" value="${TODAY}" aria-label="實際完成日期"><button class="btn small primary" data-action="routine-done-ok" data-id="${r.id}">確認完成</button><button class="btn small" data-action="routine-done-cancel">取消</button><span>下次時間會依這天重新推算</span></div>`:""}${noteBlock(k,n)}</div>`;
+          <span class="act">${noteBtn(k,!!n)}${editBtn("routine",r.id)}<button class="btn small" data-action="routine-done" data-id="${r.id}">完成</button>${dragHandle(gl,r.id)}</span>${doneFor===r.id?`<div class="donebox">完成日期 <input type="date" id="doneDate" value="${TODAY}" aria-label="實際完成日期"><button class="btn small primary" data-action="routine-done-ok" data-id="${r.id}">確認完成</button><button class="btn small" data-action="routine-done-cancel">取消</button><span>下次時間會依這天重新推算</span></div>`:""}${noteBlock(k,n)}</div>`;
       }).join("")}
     </div>`;
   }).join("");
@@ -1244,10 +1244,15 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("input",e=>{ if(e.target.id==="q"){ renderSearch(); return; } if(e.target.id==="qaEnd"||e.target.id==="qaTime") document.getElementById("qaEnd").classList.remove("bad"); const f=e.target.dataset&&e.target.dataset.ed; if(f&&ed) ed.d[f]=e.target.value; });
 /* ---------- 拖曳排序（滑鼠、觸控都適用） ---------- */
-function listIds(list){ return list==="daily"?dailyList().map(r=>r.id):allTasks().filter(t=>"day:"+t.date===list).map(t=>t.id); }
+function routineGroupRows(g){ const rows=getRoutines().filter(r=>r.g===g); return rows.sort((a,b)=>byOrder(g==="每日"?"daily":"rg:"+g,a,b)); }
+function listIds(list){
+  if(list==="daily") return dailyList().map(r=>r.id);
+  if(list.startsWith("rg:")) return routineGroupRows(list.slice(3)).map(r=>r.id);
+  return allTasks().filter(t=>"day:"+t.date===list).map(t=>t.id);
+}
 document.addEventListener("pointerdown",e=>{
   const g=e.target.closest(".grip"); if(!g || (e.pointerType==="mouse"&&e.button!==0)) return;
-  const li=g.closest("li[data-oid]"), ul=li&&li.parentElement; if(!li) return;
+  const li=g.closest("[data-oid]"), ul=li&&li.parentElement; if(!li) return;
   e.preventDefault();
   drag={g,li,ul,list:g.dataset.list,id:g.dataset.id,startY:e.clientY,dy:0,moved:false,pid:e.pointerId};
   try{ g.setPointerCapture(e.pointerId); }catch(err){}
@@ -1257,7 +1262,7 @@ document.addEventListener("pointermove",e=>{
   const d=drag;
   if(!d.moved){ if(Math.abs(e.clientY-d.startY)<4) return; d.moved=true; d.li.classList.add("dragging"); document.body.classList.add("drag-on"); }
   e.preventDefault();
-  const y=e.clientY, sibs=[...d.ul.querySelectorAll(":scope>li[data-oid]")].filter(x=>x!==d.li);
+  const y=e.clientY, sibs=[...d.ul.querySelectorAll(":scope>[data-oid]")].filter(x=>x!==d.li);
   let before=null;
   for(const s of sibs){ const r=s.getBoundingClientRect(); if(y < r.top+r.height/2){ before=s; break; } }
   const cur=d.li.nextElementSibling;
@@ -1276,10 +1281,13 @@ function endDrag(e){
   document.body.classList.remove("drag-on");
   if(!d.moved) return;
   d.li.classList.remove("dragging"); d.li.style.transform="";
-  const ids=[...d.ul.querySelectorAll(":scope>li[data-oid]")].map(x=>x.dataset.oid);
-  const all=listIds(d.list), rest=all.filter(x=>!ids.includes(x));
+  const ids=[...d.ul.querySelectorAll(":scope>[data-oid]")].map(x=>x.dataset.oid);
+  // 畫面上只顯示部分項目時（例如時程表有篩選），只重排看得到的那幾項，其他項目位置不變
+  const all=listIds(d.list), slots=[]; all.forEach((x,i)=>{ if(ids.includes(x)) slots.push(i); });
+  const out=all.slice(); slots.forEach((pos,k)=>{ out[pos]=ids[k]; });
+  ids.filter(x=>!all.includes(x)).forEach(x=>out.push(x));
   pendingRemote=null;
-  state.order[d.list]=ids.concat(rest); save();
+  state.order[d.list]=out; save();
 }
 document.addEventListener("pointerup",endDrag);
 document.addEventListener("pointercancel",endDrag);
